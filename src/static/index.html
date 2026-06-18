@@ -1,0 +1,1322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leafline</title>
+    <meta name="description" content="Leafline helps you understand, track, and gently reduce your carbon footprint through simple commute insights.">
+    <style>
+        :root {
+            --bg-sage: #f4f7f5;
+            --bg-cream: #fffdf9;
+            --bg-mint: #edf7f0;
+            --panel: rgba(255, 253, 249, 0.84);
+            --panel-solid: rgba(255, 253, 249, 0.97);
+            --line: rgba(69, 107, 85, 0.12);
+            --text-main: #1b3b2b;
+            --text-soft: #3d5c4c;
+            --text-muted: #4d6b5a;
+            --mint: #52b788;
+            --mint-deep: #2f8f64;
+            --mint-pale: #d8f3dc;
+            --earth: #f3e6d7;
+            --sun: #f6edd8;
+            --amber: #d08b48;
+            --radius-xl: 30px;
+            --radius-lg: 22px;
+            --radius-md: 18px;
+            --radius-sm: 14px;
+            --shadow-shell: 0 24px 64px rgba(64, 92, 74, 0.12);
+            --shadow-card: 0 14px 34px rgba(74, 104, 83, 0.08);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            margin: 0;
+            min-height: 100%;
+            font-family: "Segoe UI", "Trebuchet MS", sans-serif;
+            color: var(--text-main);
+            background:
+                radial-gradient(circle at top left, rgba(216, 243, 220, 0.9), transparent 30%),
+                radial-gradient(circle at bottom right, rgba(243, 230, 215, 0.85), transparent 26%),
+                linear-gradient(180deg, #fbfdfb 0%, var(--bg-sage) 46%, #eef6ef 100%);
+        }
+
+        body {
+            position: relative;
+        }
+
+        body::before,
+        body::after {
+            content: "";
+            position: fixed;
+            pointer-events: none;
+            z-index: 0;
+            border-radius: 50%;
+        }
+
+        body::before {
+            width: 22rem;
+            height: 22rem;
+            top: -8rem;
+            right: -6rem;
+            background: radial-gradient(circle, rgba(82, 183, 136, 0.2), transparent 66%);
+        }
+
+        body::after {
+            width: 18rem;
+            height: 18rem;
+            bottom: -6rem;
+            left: -5rem;
+            background: radial-gradient(circle, rgba(243, 230, 215, 0.95), transparent 66%);
+        }
+
+        .app-shell {
+            position: relative;
+            z-index: 1;
+            display: grid;
+            grid-template-columns: 360px minmax(0, 1fr);
+            gap: 1.15rem;
+            min-height: 100vh;
+            padding: 1.2rem;
+        }
+
+        .panel {
+            border-radius: var(--radius-xl);
+            border: 1px solid rgba(255, 255, 255, 0.75);
+            background: var(--panel);
+            box-shadow: var(--shadow-shell);
+            backdrop-filter: blur(12px);
+            overflow: hidden;
+        }
+
+        .garden-panel {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            padding: 1.35rem;
+            background:
+                linear-gradient(180deg, rgba(255, 253, 249, 0.98), rgba(241, 248, 243, 0.96));
+        }
+
+        .greenhouse-panel {
+            display: grid;
+            grid-template-rows: auto auto minmax(0, 1fr) auto;
+            min-height: 0;
+            background:
+                linear-gradient(180deg, rgba(255, 253, 249, 0.96), rgba(246, 251, 247, 0.94));
+        }
+
+        .eyebrow {
+            display: inline-block;
+            margin-bottom: 0.35rem;
+            text-transform: uppercase;
+            letter-spacing: 0.16em;
+            font-size: 0.74rem;
+            color: var(--text-muted);
+        }
+
+        h1,
+        h2,
+        h3,
+        p {
+            margin: 0;
+        }
+
+        .hero {
+            position: relative;
+            padding-right: 5rem;
+        }
+
+        .hero h1 {
+            font-size: 1.7rem;
+            line-height: 1.02;
+            margin-bottom: 0.4rem;
+        }
+
+        .hero-copy {
+            color: var(--text-soft);
+            font-size: 0.94rem;
+            line-height: 1.55;
+        }
+
+        .leaf-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            padding: 0.6rem 0.92rem;
+            margin-top: 0.9rem;
+            border-radius: 999px;
+            background: rgba(82, 183, 136, 0.12);
+            color: var(--mint-deep);
+            border: 1px solid rgba(82, 183, 136, 0.14);
+            font-size: 0.82rem;
+            font-weight: 600;
+        }
+
+        .plant-illustration {
+            position: absolute;
+            top: -0.35rem;
+            right: -0.4rem;
+            width: 4.7rem;
+            opacity: 0.95;
+            pointer-events: none;
+        }
+
+        .summary-card,
+        .card,
+        .insight-card,
+        .journey-item {
+            border-radius: var(--radius-lg);
+            border: 1px solid rgba(69, 107, 85, 0.08);
+            background: var(--panel-solid);
+            box-shadow: var(--shadow-card);
+        }
+
+        .summary-card {
+            padding: 1.25rem;
+        }
+
+        .summary-value {
+            margin-top: 0.5rem;
+            font-size: clamp(2.35rem, 4vw, 3rem);
+            font-weight: 700;
+            line-height: 1;
+            letter-spacing: -0.04em;
+        }
+
+        .summary-sub {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.55rem;
+            margin-top: 0.95rem;
+            padding: 0.75rem 0.95rem;
+            border-radius: 999px;
+            background: var(--mint-pale);
+            border: 1px solid rgba(82, 183, 136, 0.14);
+            color: var(--text-main);
+            font-size: 0.84rem;
+        }
+
+        .summary-note {
+            margin-top: 0.85rem;
+            color: var(--text-soft);
+            font-size: 0.88rem;
+            line-height: 1.55;
+        }
+
+        .snapshot-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 0.75rem;
+        }
+
+        .metric-tile {
+            padding: 0.9rem;
+            border-radius: var(--radius-md);
+            background: linear-gradient(180deg, #fffefc, #f5faf7);
+            border: 1px solid rgba(69, 107, 85, 0.08);
+        }
+
+        .metric-label {
+            color: var(--text-muted);
+            font-size: 0.76rem;
+            margin-bottom: 0.4rem;
+        }
+
+        .metric-value {
+            font-size: 1.18rem;
+            font-weight: 700;
+        }
+
+        .metric-help {
+            margin-top: 0.25rem;
+            color: var(--text-soft);
+            font-size: 0.8rem;
+            line-height: 1.4;
+        }
+
+        .card {
+            padding: 1rem;
+        }
+
+        .goal-top,
+        .history-head,
+        .chat-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 0.75rem;
+        }
+
+        .goal-input {
+            width: 5.5rem;
+            border: 1px solid rgba(69, 107, 85, 0.14);
+            background: #fffefc;
+            color: var(--text-main);
+            border-radius: 999px;
+            padding: 0.55rem 0.8rem;
+            font: inherit;
+        }
+
+        .goal-help,
+        .card-copy,
+        .chat-subhead {
+            margin-top: 0.45rem;
+            color: var(--text-soft);
+            font-size: 0.88rem;
+            line-height: 1.55;
+        }
+
+        .progress-track {
+            width: 100%;
+            height: 0.8rem;
+            margin-top: 0.9rem;
+            border-radius: 999px;
+            background: #ebf1ec;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            width: 0%;
+            border-radius: inherit;
+            background: linear-gradient(135deg, #89d5ab, var(--mint));
+            transition: width 0.25s ease;
+        }
+
+        .goal-summary {
+            margin-top: 0.8rem;
+            color: var(--text-soft);
+            font-size: 0.86rem;
+        }
+
+        .goal-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            margin-top: 0.85rem;
+            padding: 0.45rem 0.72rem;
+            border-radius: 999px;
+            background: rgba(82, 183, 136, 0.12);
+            color: var(--mint-deep);
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .goal-status.over {
+            background: rgba(208, 139, 72, 0.14);
+            color: #9c6230;
+        }
+
+        .insight-card {
+            padding: 1rem;
+            background: linear-gradient(160deg, #fffef9, #f0f8f2);
+        }
+
+        .insight-title {
+            font-size: 1rem;
+            margin-bottom: 0.4rem;
+        }
+
+        .history-panel {
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .subtle-link {
+            appearance: none;
+            border: none;
+            background: transparent;
+            padding: 0;
+            color: var(--text-soft);
+            text-decoration: underline;
+            text-decoration-color: rgba(86, 116, 100, 0.34);
+            text-underline-offset: 0.18rem;
+            cursor: pointer;
+            font-size: 0.88rem;
+        }
+
+        .subtle-link:hover {
+            color: var(--mint-deep);
+        }
+
+        .history-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            margin-top: 0.85rem;
+            max-height: 21rem;
+            overflow: auto;
+            padding-right: 0.15rem;
+        }
+
+        .history-list::-webkit-scrollbar,
+        .chat-feed::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .history-list::-webkit-scrollbar-thumb,
+        .chat-feed::-webkit-scrollbar-thumb {
+            border-radius: 999px;
+            background: rgba(86, 116, 100, 0.18);
+        }
+
+        .history-empty {
+            padding: 1rem;
+            border-radius: var(--radius-md);
+            border: 1px dashed var(--line);
+            background: rgba(255, 255, 255, 0.55);
+            color: var(--text-soft);
+            line-height: 1.55;
+            font-size: 0.9rem;
+        }
+
+        .journey-item {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 0.8rem;
+            padding: 0.95rem 1rem;
+            border-radius: 1.45rem 1.45rem 1.15rem 1.45rem;
+            background: linear-gradient(135deg, #fffefc, #f3f9f5);
+        }
+
+        .journey-title {
+            font-weight: 600;
+            font-size: 0.95rem;
+            margin-bottom: 0.28rem;
+        }
+
+        .journey-meta,
+        .journey-insight {
+            color: var(--text-muted);
+            font-size: 0.78rem;
+            line-height: 1.45;
+        }
+
+        .journey-insight {
+            margin-top: 0.35rem;
+            color: var(--text-soft);
+        }
+
+        .journey-carbon {
+            align-self: start;
+            padding: 0.4rem 0.7rem;
+            border-radius: 999px;
+            background: rgba(82, 183, 136, 0.12);
+            color: var(--mint-deep);
+            font-weight: 700;
+            font-size: 0.82rem;
+            white-space: nowrap;
+        }
+
+        .greenhouse-header {
+            padding: 1.25rem 1.35rem 0.9rem;
+            border-bottom: 1px solid rgba(69, 107, 85, 0.08);
+        }
+
+        .coach-dot {
+            width: 0.88rem;
+            height: 0.88rem;
+            flex-shrink: 0;
+            border-radius: 50%;
+            background: radial-gradient(circle at 35% 35%, #9be6b9, var(--mint));
+            box-shadow: 0 0 0 8px rgba(82, 183, 136, 0.1);
+        }
+
+        .coach-lockup {
+            display: flex;
+            gap: 0.8rem;
+            align-items: center;
+        }
+
+        .insight-strip {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 0.75rem;
+            padding: 1rem 1.35rem 1.1rem;
+            border-bottom: 1px solid rgba(69, 107, 85, 0.08);
+        }
+
+        .strip-card {
+            padding: 0.95rem;
+            border-radius: var(--radius-md);
+            background: linear-gradient(180deg, #fffefc, #f2f8f4);
+            border: 1px solid rgba(69, 107, 85, 0.08);
+        }
+
+        .strip-card h3 {
+            font-size: 0.92rem;
+            margin-bottom: 0.3rem;
+        }
+
+        .strip-card p {
+            color: var(--text-soft);
+            font-size: 0.83rem;
+            line-height: 1.5;
+        }
+
+        .chat-feed {
+            min-height: 0;
+            overflow: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            padding: 1.35rem;
+        }
+
+        .message {
+            max-width: min(78%, 42rem);
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+
+        .message.user {
+            align-self: flex-end;
+            align-items: flex-end;
+        }
+
+        .message.coach,
+        .message.system {
+            align-self: flex-start;
+        }
+
+        .message-label {
+            color: var(--text-muted);
+            font-size: 0.76rem;
+            padding-inline: 0.3rem;
+        }
+
+        .bubble {
+            padding: 0.95rem 1.1rem;
+            border-radius: 1.4rem;
+            border: 1px solid rgba(69, 107, 85, 0.08);
+            box-shadow: 0 10px 18px rgba(75, 108, 85, 0.08);
+            font-size: 0.95rem;
+            line-height: 1.58;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .message.coach .bubble {
+            background: var(--mint-pale);
+            border-bottom-left-radius: 0.55rem;
+        }
+
+        .message.user .bubble {
+            background: #fbf0e6;
+            color: #2f342f;
+            border-bottom-right-radius: 0.55rem;
+        }
+
+        .message.system .bubble {
+            background: #fff4ea;
+            color: #704f34;
+            border-bottom-left-radius: 0.55rem;
+        }
+
+        .typing {
+            display: inline-flex;
+            gap: 0.36rem;
+        }
+
+        .typing span {
+            width: 0.45rem;
+            height: 0.45rem;
+            border-radius: 50%;
+            background: rgba(27, 59, 43, 0.42);
+            animation: bounce 1.2s infinite ease-in-out;
+        }
+
+        .typing span:nth-child(2) {
+            animation-delay: 0.12s;
+        }
+
+        .typing span:nth-child(3) {
+            animation-delay: 0.24s;
+        }
+
+        @keyframes bounce {
+            0%, 80%, 100% { transform: translateY(0); opacity: 0.45; }
+            40% { transform: translateY(-4px); opacity: 1; }
+        }
+
+        .composer {
+            padding: 1rem 1.2rem 1.25rem;
+            border-top: 1px solid rgba(69, 107, 85, 0.08);
+            background: linear-gradient(180deg, rgba(255, 253, 249, 0.84), rgba(245, 250, 246, 0.98));
+        }
+
+        .composer-form {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.45rem;
+            border-radius: 999px;
+            border: 1px solid rgba(69, 107, 85, 0.12);
+            background: var(--panel-solid);
+            box-shadow: 0 12px 26px rgba(82, 125, 95, 0.08);
+        }
+
+        .composer-form:focus-within {
+            border-color: rgba(82, 183, 136, 0.34);
+        }
+
+        .composer-input {
+            flex: 1;
+            min-width: 0;
+            border: none;
+            outline: none;
+            background: transparent;
+            color: var(--text-main);
+            font-size: 0.97rem;
+            padding: 0.86rem 1rem;
+        }
+
+        .composer-input::placeholder {
+            color: #4d6b5a;
+        }
+
+        .send-button {
+            border: none;
+            border-radius: 999px;
+            padding: 0.95rem 1.22rem;
+            font-weight: 700;
+            font-size: 0.95rem;
+            color: #f9fff9;
+            background: linear-gradient(135deg, #6dc699, var(--mint));
+            box-shadow: 0 12px 24px rgba(82, 183, 136, 0.24);
+            cursor: pointer;
+            transition: transform 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
+        }
+
+        .send-button:disabled {
+            opacity: 0.7;
+            cursor: wait;
+        }
+
+        .send-button:hover:not(:disabled),
+        .chip:hover,
+        .goal-input:hover {
+            transform: translateY(-1px);
+        }
+
+        .send-button:hover:not(:disabled) {
+            box-shadow: 0 14px 28px rgba(82, 183, 136, 0.28);
+        }
+
+        .suggestions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.65rem;
+            margin-top: 0.9rem;
+        }
+
+        .chip {
+            border: 1px solid rgba(82, 183, 136, 0.18);
+            background: rgba(255, 253, 249, 0.92);
+            color: var(--text-soft);
+            border-radius: 999px;
+            padding: 0.62rem 0.88rem;
+            font-size: 0.83rem;
+            cursor: pointer;
+            transition: transform 0.18s ease, background 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+        }
+
+        .chip:hover {
+            background: var(--mint-pale);
+            color: var(--text-main);
+        }
+
+        .composer-input:focus,
+        .goal-input:focus,
+        .send-button:focus,
+        .chip:focus,
+        .subtle-link:focus,
+        .skip-link:focus {
+            outline: 3px solid var(--mint-deep);
+            outline-offset: 2px;
+        }
+
+        @media (max-width: 1100px) {
+            .app-shell {
+                grid-template-columns: 1fr;
+                min-height: auto;
+            }
+
+            .garden-panel {
+                order: 2;
+            }
+
+            .greenhouse-panel {
+                order: 1;
+                min-height: 72vh;
+            }
+        }
+
+        @media (max-width: 760px) {
+            .app-shell {
+                padding: 0.8rem;
+                gap: 0.8rem;
+            }
+
+            .snapshot-grid,
+            .insight-strip {
+                grid-template-columns: 1fr;
+            }
+
+            .composer-form {
+                flex-direction: column;
+                align-items: stretch;
+                border-radius: 1.4rem;
+            }
+
+            .send-button,
+            .goal-input,
+            .chip {
+                width: 100%;
+            }
+
+            .message {
+                max-width: 92%;
+            }
+
+            .hero {
+                padding-right: 0;
+            }
+
+            .plant-illustration {
+                display: none;
+            }
+        }
+
+        .skip-link {
+            position: absolute;
+            top: -100%;
+            left: 1rem;
+            padding: 0.75rem 1.2rem;
+            background: var(--mint-deep);
+            color: #fff;
+            border-radius: var(--radius-sm);
+            font-weight: 700;
+            font-size: 0.95rem;
+            z-index: 1000;
+            text-decoration: none;
+            transition: top 0.2s ease;
+        }
+
+        .skip-link:focus {
+            top: 1rem;
+        }
+
+        .visually-hidden {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+    </style>
+</head>
+<body>
+    <a href="#chatInput" class="skip-link">Skip to main content</a>
+    <main class="app-shell">
+        <aside class="panel garden-panel" aria-labelledby="leafline-heading">
+            <header class="hero" role="banner">
+                <span class="eyebrow">Your Digital Garden</span>
+                <h1 id="leafline-heading">Leafline</h1>
+                <p class="hero-copy">Track the trips you actually take, understand what drives your footprint, and get one gentle action at a time to reduce it.</p>
+                <div class="leaf-badge">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path d="M19 4c-7 1-12 6-13 13 7 1 12-4 13-13Z" fill="#52b788"></path>
+                        <path d="M6 18c2-4 6-8 10-10" stroke="#2c6a4a" stroke-width="1.8" stroke-linecap="round"></path>
+                    </svg>
+                    Understand, track, reduce
+                </div>
+                <svg class="plant-illustration" viewBox="0 0 88 110" aria-hidden="true">
+                    <path d="M54 12c14 11 22 26 23 42-14 1-29-4-39-14C27 31 22 18 21 4c13 0 25 3 33 8z" fill="#cfeedd"></path>
+                    <path d="M35 55c13-6 28-5 41 3-8 11-20 19-33 22-13 1-26-3-36-13 7-5 16-9 28-12z" fill="#a6ddbb"></path>
+                    <path d="M55 18c-10 17-18 36-25 56" stroke="#5ca77d" stroke-width="3" stroke-linecap="round" fill="none"></path>
+                    <rect x="17" y="80" width="22" height="12" rx="6" fill="#dfc2a2"></rect>
+                </svg>
+            </header>
+
+            <section class="summary-card" aria-label="Total carbon footprint summary">
+                <span class="eyebrow">Total Carbon Footprint</span>
+                <div class="summary-value" id="totalCarbonValue" role="status" aria-live="polite" aria-atomic="true">0.00 kg</div>
+                <div class="summary-sub">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <path d="M18.5 5.5c-6 .8-10.2 4.9-11 10.9 5.8.8 10-3.4 11-10.9Z" fill="#52b788"></path>
+                        <path d="M8.2 17.5c1.9-3.7 5.1-6.9 8.9-8.8" stroke="#1b3b2b" stroke-width="1.7" stroke-linecap="round"></path>
+                    </svg>
+                    Equivalent to <strong id="treeDaysValue">0.0</strong> days of tree absorption
+                </div>
+                <p class="summary-note" id="summaryNoteText">A calm baseline beats a perfect day. The goal is to make your lower-carbon trips easier to repeat.</p>
+            </section>
+
+            <section class="card" aria-labelledby="snapshotHeading">
+                <span class="eyebrow">Weekly Snapshot</span>
+                <h2 id="snapshotHeading">What this week looks like</h2>
+                <div class="snapshot-grid" style="margin-top: 0.9rem;">
+                    <article class="metric-tile">
+                        <div class="metric-label">This week</div>
+                        <div class="metric-value" id="weeklyCarbonValue">0.00 kg</div>
+                        <div class="metric-help">Your seven-day total so far.</div>
+                    </article>
+                    <article class="metric-tile">
+                        <div class="metric-label">Greener share</div>
+                        <div class="metric-value" id="greenerShareValue">0%</div>
+                        <div class="metric-help">Trips that stayed in lower-impact modes.</div>
+                    </article>
+                    <article class="metric-tile">
+                        <div class="metric-label">Top source</div>
+                        <div class="metric-value" id="topSourceValue">None yet</div>
+                        <div class="metric-help" id="topSourceHelp">Log a few rides to reveal a pattern.</div>
+                    </article>
+                </div>
+            </section>
+
+            <section class="card" aria-labelledby="goalHeading">
+                <div class="goal-top">
+                    <div>
+                        <span class="eyebrow">Weekly Goal</span>
+                        <h2 id="goalHeading">Stay within your target</h2>
+                    </div>
+                    <label for="weeklyGoalInput" class="visually-hidden">Weekly goal in kg</label>
+                    <input id="weeklyGoalInput" class="goal-input" type="number" min="1" step="0.5" value="8">
+                </div>
+                <p class="goal-help">Set a personal weekly carbon budget. Leafline will show how close you are and what one realistic change could help.</p>
+                <div class="progress-track" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="Weekly goal progress">
+                    <div class="progress-fill" id="goalProgressFill"></div>
+                </div>
+                <div class="goal-status" id="goalStatusPill">On track this week</div>
+                <div class="goal-summary" id="goalSummaryText">You have your full weekly budget available.</div>
+            </section>
+
+            <section class="insight-card" aria-labelledby="opportunityHeading">
+                <span class="eyebrow">Best Next Action</span>
+                <h2 id="opportunityHeading" class="insight-title">Your biggest reduction opportunity</h2>
+                <p class="card-copy" id="opportunityText">Once you log a few trips, Leafline will point out which repeated ride is creating the most emissions and what to try instead.</p>
+            </section>
+
+            <section class="insight-card" aria-labelledby="coachingHeading">
+                <span class="eyebrow">Why It Matters</span>
+                <h2 id="coachingHeading" class="insight-title">A simple insight for this week</h2>
+                <p class="card-copy" id="coachingText">Small repeated changes beat one-off perfect days. Focus on the trip you take most often, not the occasional one.</p>
+            </section>
+
+            <section class="history-panel" aria-labelledby="historyHeading">
+                <div class="history-head">
+                    <div>
+                        <span class="eyebrow">My Eco Journey</span>
+                        <h2 id="historyHeading">Recent trips</h2>
+                    </div>
+                    <button class="subtle-link" id="resetHistoryButton" type="button" aria-label="Clear all journey history">Clear Path</button>
+                </div>
+                <div class="history-list" id="historyList" role="log" aria-live="polite">
+                    <div class="history-empty" id="historyEmptyState">
+                        Start with one commute. Leafline will translate those trips into patterns, progress, and one next step.
+                    </div>
+                </div>
+            </section>
+        </aside>
+
+        <section class="panel greenhouse-panel" aria-labelledby="assistantHeading">
+            <header class="greenhouse-header">
+                <div class="chat-head">
+                    <div class="coach-lockup">
+                        <span class="coach-dot" aria-hidden="true"></span>
+                        <div>
+                            <span class="eyebrow">The Carbon Coach Greenhouse</span>
+                            <h2 id="assistantHeading">Coaching Assistant</h2>
+                        </div>
+                    </div>
+                </div>
+                <p class="chat-subhead">Log a trip in plain language. Leafline will estimate impact, explain what it means, and suggest an easier lower-carbon move when it sees one.</p>
+            </header>
+
+            <section class="insight-strip" aria-label="Live guidance">
+                <article class="strip-card">
+                    <h3>Track</h3>
+                    <p id="stripTrackText">Every commute you log becomes part of your weekly picture.</p>
+                </article>
+                <article class="strip-card">
+                    <h3>Understand</h3>
+                    <p id="stripUnderstandText">Leafline will turn kilograms into plain-language patterns and context.</p>
+                </article>
+                <article class="strip-card">
+                    <h3>Reduce</h3>
+                    <p id="stripReduceText">Repeated short high-impact rides are usually the easiest place to start.</p>
+                </article>
+            </section>
+
+            <div class="chat-feed" id="chatFeed" role="log" aria-live="polite">
+                <article class="message coach">
+                    <span class="message-label">Leafline</span>
+                    <div class="bubble">Welcome in. Tell me about a commute, like "I took a cab for 15 minutes" or "I rode the bus for 30 minutes," and I will help you track it and spot one practical way to improve over time.</div>
+                </article>
+            </div>
+
+            <div class="composer">
+                <form class="composer-form" id="chatForm">
+                    <input
+                        class="composer-input"
+                        id="chatInput"
+                        type="text"
+                        name="message"
+                        autocomplete="off"
+                        maxlength="280"
+                        placeholder="Tell me about your commute today..."
+                        aria-label="Tell me about your commute today"
+                        required
+                    >
+                    <button class="send-button" id="sendButton" type="submit">Send</button>
+                </form>
+                <div class="suggestions" aria-label="Suggested prompts">
+                    <button class="chip" type="button" data-suggestion="I rode the bus for 30 minutes" aria-label="Suggest: I rode the bus for 30 minutes">I rode the bus for 30 minutes</button>
+                    <button class="chip" type="button" data-suggestion="I commuted by metro for 45 mins" aria-label="Suggest: I commuted by metro for 45 mins">I commuted by metro for 45 mins</button>
+                    <button class="chip" type="button" data-suggestion="I took a cab for 15 minutes" aria-label="Suggest: I took a cab for 15 minutes">I took a cab for 15 minutes</button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer role="contentinfo" class="visually-hidden">
+        <p>Leafline — Helping individuals understand, track, and reduce their carbon footprint through simple actions and personalized insights.</p>
+    </footer>
+
+    <script>
+        let totalCarbonCount = 0.0;
+        let journeyHistory = [];
+        let weeklyGoalKg = 8.0;
+
+        const STORAGE_KEYS = {
+            total: "leafline_total_carbon",
+            history: "leafline_journey_history",
+            weeklyGoal: "leafline_weekly_goal"
+        };
+
+        const totalCarbonValue = document.getElementById("totalCarbonValue");
+        const treeDaysValue = document.getElementById("treeDaysValue");
+        const weeklyCarbonValue = document.getElementById("weeklyCarbonValue");
+        const greenerShareValue = document.getElementById("greenerShareValue");
+        const topSourceValue = document.getElementById("topSourceValue");
+        const topSourceHelp = document.getElementById("topSourceHelp");
+        const weeklyGoalInput = document.getElementById("weeklyGoalInput");
+        const goalProgressFill = document.getElementById("goalProgressFill");
+        const goalStatusPill = document.getElementById("goalStatusPill");
+        const goalSummaryText = document.getElementById("goalSummaryText");
+        const opportunityText = document.getElementById("opportunityText");
+        const coachingText = document.getElementById("coachingText");
+        const summaryNoteText = document.getElementById("summaryNoteText");
+        const historyList = document.getElementById("historyList");
+        const historyEmptyState = document.getElementById("historyEmptyState");
+        const resetHistoryButton = document.getElementById("resetHistoryButton");
+        const chatFeed = document.getElementById("chatFeed");
+        const chatForm = document.getElementById("chatForm");
+        const chatInput = document.getElementById("chatInput");
+        const sendButton = document.getElementById("sendButton");
+        const stripTrackText = document.getElementById("stripTrackText");
+        const stripUnderstandText = document.getElementById("stripUnderstandText");
+        const stripReduceText = document.getElementById("stripReduceText");
+        const suggestionButtons = Array.from(document.querySelectorAll("[data-suggestion]"));
+
+        function saveState() {
+            localStorage.setItem(STORAGE_KEYS.total, String(totalCarbonCount));
+            localStorage.setItem(STORAGE_KEYS.history, JSON.stringify(journeyHistory));
+            localStorage.setItem(STORAGE_KEYS.weeklyGoal, String(weeklyGoalKg));
+        }
+
+        function loadState() {
+            const savedTotal = localStorage.getItem(STORAGE_KEYS.total);
+            const savedHistory = localStorage.getItem(STORAGE_KEYS.history);
+            const savedGoal = localStorage.getItem(STORAGE_KEYS.weeklyGoal);
+
+            if (savedTotal !== null) {
+                const parsedTotal = Number.parseFloat(savedTotal);
+                totalCarbonCount = Number.isFinite(parsedTotal) ? parsedTotal : 0.0;
+            }
+
+            if (savedHistory !== null) {
+                try {
+                    const parsedHistory = JSON.parse(savedHistory);
+                    journeyHistory = Array.isArray(parsedHistory) ? parsedHistory : [];
+                } catch (error) {
+                    journeyHistory = [];
+                }
+            }
+
+            if (savedGoal !== null) {
+                const parsedGoal = Number.parseFloat(savedGoal);
+                if (Number.isFinite(parsedGoal) && parsedGoal > 0) {
+                    weeklyGoalKg = parsedGoal;
+                }
+            }
+
+            weeklyGoalInput.value = weeklyGoalKg.toFixed(1).replace(/\.0$/, "");
+        }
+
+        function calculateTreeDays(totalKg) {
+            return totalKg > 0 ? totalKg / 0.06 : 0;
+        }
+
+        function getModeIcon(mode) {
+            const iconMap = {
+                walk: "🚶",
+                bicycle: "🚲",
+                metro: "🚇",
+                bus: "🚌",
+                cab: "🚕"
+            };
+            return iconMap[(mode || "").toLowerCase()] || "🌿";
+        }
+
+        function getModeLabel(mode) {
+            const labelMap = {
+                walk: "Walk",
+                bicycle: "Bicycle Ride",
+                metro: "Metro Ride",
+                bus: "Bus Ride",
+                cab: "Cab Ride"
+            };
+            return labelMap[(mode || "").toLowerCase()] || "Commute";
+        }
+
+        function formatImpactLabel(level) {
+            const labels = {
+                low: "Low impact",
+                light: "Light impact",
+                moderate: "Moderate impact",
+                high: "High impact"
+            };
+            return labels[level] || "Light impact";
+        }
+
+        function formatTripTitle(entry) {
+            return `${getModeIcon(entry.mode)} ${getModeLabel(entry.mode)} - ${entry.duration} Mins`;
+        }
+
+        function formatTimeContext(timestamp) {
+            const date = new Date(timestamp);
+            return date.toLocaleString([], {
+                month: "short",
+                day: "numeric",
+                hour: "numeric",
+                minute: "2-digit"
+            });
+        }
+
+        function getWeeklyHistory() {
+            const cutoff = Date.now() - (7 * 24 * 60 * 60 * 1000);
+            return journeyHistory.filter((entry) => {
+                const timestamp = new Date(entry.timestamp).getTime();
+                return Number.isFinite(timestamp) && timestamp >= cutoff;
+            });
+        }
+
+        function getWeeklyStats() {
+            const weeklyHistory = getWeeklyHistory();
+            const weeklyTotal = weeklyHistory.reduce((sum, entry) => sum + (Number(entry.carbon_kg) || 0), 0);
+            const greenerTrips = weeklyHistory.filter((entry) => ["walk", "bicycle", "metro", "bus"].includes(entry.mode)).length;
+            const greenerShare = weeklyHistory.length ? Math.round((greenerTrips / weeklyHistory.length) * 100) : 0;
+
+            const sourceMap = {};
+            weeklyHistory.forEach((entry) => {
+                sourceMap[entry.mode] = (sourceMap[entry.mode] || 0) + (Number(entry.carbon_kg) || 0);
+            });
+
+            let topSource = null;
+            let topSourceKg = 0;
+            Object.entries(sourceMap).forEach(([mode, total]) => {
+                if (total > topSourceKg) {
+                    topSource = mode;
+                    topSourceKg = total;
+                }
+            });
+
+            return {
+                weeklyHistory,
+                weeklyTotal,
+                greenerShare,
+                topSource,
+                topSourceKg
+            };
+        }
+
+        function getBestOpportunity(entries) {
+            const candidates = entries.filter((entry) => Number(entry.potential_savings_kg) > 0);
+            if (!candidates.length) {
+                return null;
+            }
+            return candidates.reduce((best, entry) => {
+                if (!best || Number(entry.potential_savings_kg) > Number(best.potential_savings_kg)) {
+                    return entry;
+                }
+                return best;
+            }, null);
+        }
+
+        function renderSummary() {
+            totalCarbonValue.textContent = `${totalCarbonCount.toFixed(2)} kg`;
+            treeDaysValue.textContent = calculateTreeDays(totalCarbonCount).toFixed(1);
+        }
+
+        function renderWeeklyInsights() {
+            const stats = getWeeklyStats();
+            const weeklyTotal = stats.weeklyTotal;
+
+            weeklyCarbonValue.textContent = `${weeklyTotal.toFixed(2)} kg`;
+            greenerShareValue.textContent = `${stats.greenerShare}%`;
+
+            if (stats.topSource) {
+                topSourceValue.textContent = getModeLabel(stats.topSource);
+                topSourceHelp.textContent = `${stats.topSourceKg.toFixed(2)} kg this week came from ${stats.topSource} trips.`;
+            } else {
+                topSourceValue.textContent = "None yet";
+                topSourceHelp.textContent = "Log a few rides to reveal a pattern.";
+            }
+
+            const progressPercent = weeklyGoalKg > 0 ? Math.min((weeklyTotal / weeklyGoalKg) * 100, 100) : 0;
+            goalProgressFill.style.width = `${progressPercent}%`;
+            const progressTrack = goalProgressFill.parentElement;
+            if (progressTrack) { progressTrack.setAttribute('aria-valuenow', Math.round(progressPercent)); }
+
+            if (weeklyTotal === 0) {
+                goalStatusPill.textContent = "On track this week";
+                goalStatusPill.classList.remove("over");
+                goalSummaryText.textContent = "You have your full weekly budget available.";
+            } else if (weeklyTotal < weeklyGoalKg) {
+                goalStatusPill.textContent = "On track this week";
+                goalStatusPill.classList.remove("over");
+                goalSummaryText.textContent = `You are ${(weeklyGoalKg - weeklyTotal).toFixed(2)} kg under your weekly goal.`;
+            } else {
+                goalStatusPill.textContent = "A little over goal";
+                goalStatusPill.classList.add("over");
+                goalSummaryText.textContent = `You are ${(weeklyTotal - weeklyGoalKg).toFixed(2)} kg over your weekly goal. A small repeated swap could pull this back.`;
+            }
+
+            const bestOpportunity = getBestOpportunity(stats.weeklyHistory);
+            if (bestOpportunity) {
+                opportunityText.textContent =
+                    `Your best near-term swap is a ${getModeLabel(bestOpportunity.mode).toLowerCase()} like "${formatTripTitle(bestOpportunity)}". Taking ${bestOpportunity.suggested_mode} instead could save about ${Number(bestOpportunity.potential_savings_kg).toFixed(2)} kg CO2e on a similar trip.`;
+            } else {
+                opportunityText.textContent =
+                    "You are already leaning toward lighter modes. Keep repeating those lower-impact trips and focus on consistency.";
+            }
+
+            if (!stats.weeklyHistory.length) {
+                coachingText.textContent = "Small repeated changes beat one-off perfect days. Focus on the trip you take most often, not the occasional one.";
+                stripTrackText.textContent = "Every commute you log becomes part of your weekly picture.";
+                stripUnderstandText.textContent = "Leafline will turn kilograms into plain-language patterns and context.";
+                stripReduceText.textContent = "Repeated short high-impact rides are usually the easiest place to start.";
+                summaryNoteText.textContent = "A calm baseline beats a perfect day. The goal is to make your lower-carbon trips easier to repeat.";
+                return;
+            }
+
+            if (stats.topSource === "cab") {
+                coachingText.textContent = "Most footprints rise fastest through repeated solo car trips. If you only change one habit this week, start with your shortest cab ride.";
+                stripReduceText.textContent = "Cab rides are your strongest opportunity right now. Look for one realistic swap this week.";
+                summaryNoteText.textContent = "Your footprint is being driven most by solo car travel. Even one repeated swap can noticeably lower the weekly total.";
+            } else if (stats.greenerShare >= 70) {
+                coachingText.textContent = "You are already choosing lower-impact modes for most of your week. The next improvement is keeping that pattern steady on busy days too.";
+                stripReduceText.textContent = "You already have strong habits. Protect them on the days when convenience is most tempting.";
+                summaryNoteText.textContent = "You already have a strong low-carbon rhythm. Consistency now matters more than perfection.";
+            } else {
+                coachingText.textContent = "Your footprint is coming from a mix of choices. The best move is to repeat one greener option often enough that it becomes the default.";
+                stripReduceText.textContent = "Pick one repeated trip and make that one easier to do the low-carbon way.";
+                summaryNoteText.textContent = "Mixed habits usually improve fastest when you focus on one repeated trip instead of trying to change everything at once.";
+            }
+
+            stripTrackText.textContent = `${stats.weeklyHistory.length} trips logged over the last 7 days.`;
+            stripUnderstandText.textContent = stats.topSource
+                ? `${getModeLabel(stats.topSource)} is currently your largest weekly source.`
+                : "Log a few more trips and Leafline will explain the main pattern.";
+        }
+
+        function renderHistory() {
+            const rows = historyList.querySelectorAll(".journey-item");
+            rows.forEach((row) => row.remove());
+            historyEmptyState.hidden = journeyHistory.length > 0;
+
+            journeyHistory.forEach((entry) => {
+                const article = document.createElement("article");
+                article.className = "journey-item";
+
+                const savingsText = Number(entry.potential_savings_kg) > 0 && entry.suggested_mode
+                    ? `Try ${entry.suggested_mode} next time to save about ${Number(entry.potential_savings_kg).toFixed(2)} kg CO2e.`
+                    : entry.insight || "A steady low-impact choice.";
+
+                article.innerHTML = `
+                    <div>
+                        <div class="journey-title">${formatTripTitle(entry)}</div>
+                        <div class="journey-meta">${formatTimeContext(entry.timestamp)} · ${Number(entry.distance_km || 0).toFixed(1)} km · ${formatImpactLabel(entry.impact_level)}</div>
+                        <div class="journey-insight">${savingsText}</div>
+                    </div>
+                    <div class="journey-carbon">+${Number(entry.carbon_kg).toFixed(2)} kg</div>
+                `;
+                historyList.appendChild(article);
+            });
+        }
+
+        function renderAll() {
+            renderSummary();
+            renderWeeklyInsights();
+            renderHistory();
+        }
+
+        function appendMessage(role, label, text) {
+            const article = document.createElement("article");
+            article.className = `message ${role}`;
+
+            const labelEl = document.createElement("span");
+            labelEl.className = "message-label";
+            labelEl.textContent = label;
+
+            const bubble = document.createElement("div");
+            bubble.className = "bubble";
+            bubble.textContent = text;
+
+            article.appendChild(labelEl);
+            article.appendChild(bubble);
+            chatFeed.appendChild(article);
+            chatFeed.scrollTop = chatFeed.scrollHeight;
+            return article;
+        }
+
+        function appendTypingIndicator() {
+            const article = document.createElement("article");
+            article.className = "message coach";
+            article.innerHTML = `
+                <span class="message-label">Leafline</span>
+                <div class="bubble"><div class="typing" aria-label="Leafline is typing"><span></span><span></span><span></span></div></div>
+            `;
+            chatFeed.appendChild(article);
+            chatFeed.scrollTop = chatFeed.scrollHeight;
+            return article;
+        }
+
+        function addJourneyEntry(data) {
+            const entry = {
+                mode: data.mode,
+                duration: data.duration,
+                carbon_kg: Number(data.carbon_kg) || 0,
+                distance_km: Number(data.distance_km) || 0,
+                impact_level: data.impact_level || "light",
+                suggested_mode: data.suggested_mode || null,
+                potential_savings_kg: Number(data.potential_savings_kg) || 0,
+                insight: data.insight || "",
+                timestamp: new Date().toISOString()
+            };
+
+            totalCarbonCount += entry.carbon_kg;
+            journeyHistory.unshift(entry);
+            saveState();
+            renderAll();
+        }
+
+        async function handleSubmit(event) {
+            event.preventDefault();
+
+            const message = chatInput.value.trim();
+            if (!message) {
+                return;
+            }
+
+            appendMessage("user", "You", message);
+            chatInput.value = "";
+            chatInput.disabled = true;
+            sendButton.disabled = true;
+
+            const typingIndicator = appendTypingIndicator();
+
+            try {
+                const response = await fetch("/api/chat", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ message })
+                });
+
+                let result;
+                try {
+                    result = await response.json();
+                } catch (error) {
+                    throw new Error("The server returned an unreadable response.");
+                }
+
+                typingIndicator.remove();
+
+                if (!response.ok) {
+                    throw new Error(result.detail || "Something went wrong while speaking with Leafline.");
+                }
+
+                appendMessage("coach", "Leafline", result.reply || "I logged that, but I did not receive a reply message.");
+
+                if (result.data && typeof result.data.carbon_kg !== "undefined") {
+                    addJourneyEntry(result.data);
+                }
+            } catch (error) {
+                typingIndicator.remove();
+                appendMessage("system", "Garden Note", error.message || "I could not reach Leafline just now. Please try again in a moment.");
+            } finally {
+                chatInput.disabled = false;
+                sendButton.disabled = false;
+                chatInput.focus();
+            }
+        }
+
+        function handleReset() {
+            const shouldReset = window.confirm("Clear your trip history and weekly insights?");
+            if (!shouldReset) {
+                return;
+            }
+
+            totalCarbonCount = 0.0;
+            journeyHistory = [];
+            saveState();
+            renderAll();
+            appendMessage("coach", "Leafline", "Your path is cleared. Log your next commute whenever you're ready.");
+        }
+
+        function handleSuggestion(event) {
+            const suggestion = event.currentTarget.getAttribute("data-suggestion");
+            if (!suggestion) {
+                return;
+            }
+            chatInput.value = suggestion;
+            chatInput.focus();
+        }
+
+        function handleGoalChange() {
+            const parsedGoal = Number.parseFloat(weeklyGoalInput.value);
+            if (!Number.isFinite(parsedGoal) || parsedGoal <= 0) {
+                weeklyGoalInput.value = weeklyGoalKg.toFixed(1).replace(/\.0$/, "");
+                return;
+            }
+            weeklyGoalKg = parsedGoal;
+            saveState();
+            renderWeeklyInsights();
+        }
+
+        chatForm.addEventListener("submit", handleSubmit);
+        resetHistoryButton.addEventListener("click", handleReset);
+        weeklyGoalInput.addEventListener("change", handleGoalChange);
+        suggestionButtons.forEach((button) => button.addEventListener("click", handleSuggestion));
+
+        loadState();
+        renderAll();
+    </script>
+</body>
+</html>
