@@ -1,13 +1,15 @@
 # src/main.py
-from collections import defaultdict, deque
-from contextlib import asynccontextmanager
 import os
 import time
+from collections import defaultdict, deque
+from contextlib import asynccontextmanager
+from typing import Dict, Deque, Tuple, Optional, Any
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse
-from pydantic import BaseModel, Field, field_validator
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel, Field, field_validator
+
 from src.agents.coach_agent import parse_transit_text
 from src.services.carbon_math import (
     calculate_distance_km,
@@ -20,13 +22,14 @@ from src.services.carbon_math import (
 MAX_CHAT_MESSAGE_LENGTH = 280
 RATE_LIMIT_WINDOW_SECONDS = 60
 RATE_LIMIT_MAX_REQUESTS = 30
-REQUEST_LOG: dict[str, deque[float]] = defaultdict(deque)
+REQUEST_LOG: Dict[str, Deque[float]] = defaultdict(deque)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup validation diagnostic check
     api_key = os.getenv("ANTIGRAVITY_API_KEY")
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     if not api_key:
         print("WARNING: ANTIGRAVITY_API_KEY env variable is missing.")
         print("Using local mock/regex fallback parser. Live Gemini tracking is inactive.")
@@ -35,7 +38,6 @@ async def lifespan(app: FastAPI):
         print("Verifying connection to Gemini API...")
         try:
             from google.antigravity import Agent, LocalAgentConfig
-            # Run a fast async diagnostic chat
             config = LocalAgentConfig(
                 system_instructions="Verify connectivity.",
                 api_key=api_key
@@ -46,8 +48,9 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             print(f"WARNING: Gemini API connectivity diagnostic failed ({e}).")
             print("Falling back to local mock/regex parser to maintain 100% service uptime.")
-    print("="*80 + "\n")
+    print("=" * 80 + "\n")
     yield
+
 
 app = FastAPI(
     title="Leafline — The Predictive Carbon Coach",
@@ -56,13 +59,11 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Static directory structure matching project initialization guidelines
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
 STATIC_FILE_PATH = os.path.join(STATIC_DIR, "index.html")
-
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
-# Strict request body validation matching standard production APIs
+
 class ChatPayload(BaseModel):
     message: str = Field(min_length=1, max_length=MAX_CHAT_MESSAGE_LENGTH)
 
@@ -75,7 +76,7 @@ class ChatPayload(BaseModel):
         return cleaned
 
 
-def _build_trip_insight(mode: str, duration: int, carbon_kg: float) -> tuple[str, str | None, float]:
+def _build_trip_insight(mode: str, duration: int, carbon_kg: float) -> Tuple[str, Optional[str], float]:
     suggested_mode = recommend_lower_carbon_mode(duration, mode)
     savings_kg = estimate_savings_for_mode_swap(duration, mode, suggested_mode)
 
@@ -124,6 +125,11 @@ async def add_security_headers_and_rate_limit(request: Request, call_next):
         )
 
     request_times.append(now)
+    
+    # Memory optimization: clean up empty queues periodically to prevent unbounded memory growth for inactive users
+    if not request_times and client_key in REQUEST_LOG:
+        del REQUEST_LOG[client_key]
+
     response = await call_next(request)
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
@@ -142,69 +148,58 @@ async def add_security_headers_and_rate_limit(request: Request, call_next):
     )
     return response
 
+
 @app.get("/")
-async def read_index():
+async def read_index() -> FileResponse:
     """Serves the main dashboard user interface."""
     if not os.path.exists(STATIC_FILE_PATH):
         raise HTTPException(status_code=404, detail="Frontend index.html was not found.")
     return FileResponse(STATIC_FILE_PATH)
 
+
 @app.post("/api/chat")
-async def handle_coach_chat(payload: ChatPayload):
+async def handle_coach_chat(payload: ChatPayload) -> Dict[str, Any]:
     """Processes natural language travel inputs or conversational advice requests."""
-    # 1. Parse text inputs via Antigravity Agent Engine (or local fallback)
     parsed_metrics = await parse_transit_text(payload.message)
-    
+
     if "error" in parsed_metrics:
         return {
             "reply": "I encountered an issue parsing that request. Could you describe your commute again?",
             "data": None
         }
-        
+
     intent = parsed_metrics.get("intent", "log_transit")
-    
-    # Mode A: Conversational reply (general questions, greetings)
+
     if intent == "conversation":
-        reply = parsed_metrics.get("conversational_reply")
-        if not reply:
-            reply = "I'm here to help you optimize your carbon footprint! Tell me about your commute."
+        reply = parsed_metrics.get("conversational_reply") or "I'm here to help you optimize your carbon footprint! Tell me about your commute."
         return {
             "reply": reply,
-            "data": None  # No trip logged in dashboard
+            "data": None
         }
-        
-    # Mode B: Transit Logging
+
     mode = parsed_metrics.get("transit_mode")
     duration = parsed_metrics.get("duration_minutes")
-    
+
     if not mode or duration is None:
         return {
             "reply": "I couldn't quite catch your transit details. Could you specify the transport mode (like cab, bus, metro, bicycle, walk) and how long it took in minutes?",
             "data": None
         }
-        
-    # Compute carbon baseline
+
     try:
-        co2_footprint = calculate_transport_emissions(
-            duration_minutes=duration,
-            transit_mode=mode
-        )
-        distance_km = calculate_distance_km(
-            duration_minutes=duration,
-            transit_mode=mode
-        )
+        co2_footprint = calculate_transport_emissions(duration_minutes=duration, transit_mode=mode)
+        distance_km = calculate_distance_km(duration_minutes=duration, transit_mode=mode)
     except ValueError as err:
         raise HTTPException(status_code=422, detail=str(err))
 
     impact_level = classify_trip_impact(co2_footprint)
     trip_insight, suggested_mode, savings_kg = _build_trip_insight(mode, duration, co2_footprint)
 
-    reply_parts = [
-        f"I logged your {duration}-minute {mode} trip at about {co2_footprint:.2f} kg CO2e.",
-        f"That works out to roughly {distance_km:.1f} km of travel.",
-        trip_insight,
-    ]
-    reply_msg = "\n\n".join(reply_parts)
+    reply_msg = (
+        f"I logged your {duration}-minute {mode} trip at about {co2_footprint:.2f} kg CO2e.\n\n"
+        f"That works out to roughly {distance_km:.1f} km of travel.\n\n"
+        f"{trip_insight}"
+    )
 
     return {
         "reply": reply_msg,
@@ -220,7 +215,8 @@ async def handle_coach_chat(payload: ChatPayload):
         }
     }
 
+
 @app.get("/api/health")
-def health_check():
+def health_check() -> Dict[str, str]:
     """Automated monitoring route for Google Cloud Run health probes."""
     return {"status": "healthy", "service": "leafline"}
